@@ -2,6 +2,11 @@
 
 Learning the EVM by writing a mini-EVM.
 
+Run prog:
+```sh
+npm run dev
+```
+
 ## Resources
 * [EVM Codes](https://www.evm.codes/)
 * [w1nt3r-eth EVM tests](https://github.com/w1nt3r-eth/evm-from-scratch)

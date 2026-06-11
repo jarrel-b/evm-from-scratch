@@ -172,7 +172,7 @@ export class State {
       const op = this.program[this.pc] as OpCode;
       const handler = handlers[op];
       if (handler === undefined) {
-        throw new Error(`unimplemnted opcode: 0x${op.toString(16)}`);
+        throw new Error(`unimplemented opcode: 0x${op.toString(16)}`);
       }
       handler(this);
     }
