@@ -200,6 +200,10 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.DUP3]: dup3,
   [OpCode.DUP5]: dup5,
   [OpCode.DUP8]: dup8,
+  [OpCode.SWAP1]: swap1,
+  [OpCode.SWAP3]: swap3,
+  [OpCode.SWAP5]: swap5,
+  [OpCode.SWAP7]: swap7,
 };
 
 function stop(evm: EVM): void {
@@ -590,4 +594,45 @@ function _dup(evm: EVM, n: number): void {
     throw new Error("stack underflow");
   }
   evm.stack.push(evm.stack.items[idx]);
+}
+
+function swap1(evm: EVM): void {
+  _swap(evm, 1);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function swap3(evm: EVM): void {
+  _swap(evm, 3);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function swap5(evm: EVM): void {
+  _swap(evm, 5);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function swap7(evm: EVM): void {
+  _swap(evm, 7);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function _swap(evm: EVM, n: number): void {
+  const idxA = evm.stack.items.length - 1;
+  if (idxA < 0) {
+    throw new Error("stack underflow");
+  }
+
+  const idxB = idxA - n;
+  if (idxB < 0) {
+    throw new Error("stack underflow");
+  }
+
+  const a = evm.stack.items[idxA];
+  const b = evm.stack.items[idxB];
+  evm.stack.items[idxA] = b;
+  evm.stack.items[idxB] = a;
 }
