@@ -4,25 +4,25 @@ import { OpCode, handlers } from "./ops.js";
 const MAXIMUM_STACK_SIZE = 1024;
 
 export class Stack {
-  #items: bigint[] = [];
+  items: bigint[] = [];
 
   push(value: bigint): void {
-    if (this.#items.length === MAXIMUM_STACK_SIZE) {
+    if (this.items.length === MAXIMUM_STACK_SIZE) {
       throw new Error("stack overflow");
     }
-    this.#items.push(toUint256(value));
+    this.items.push(toUint256(value));
   }
 
   pop(): bigint {
-    const value = this.#items.pop();
+    const value = this.items.pop();
     if (value === undefined) {
       throw new Error("stack underflow");
     }
     return value;
   }
 
-  items(): bigint[] {
-    return [...this.#items];
+  toArray(): bigint[] {
+    return [...this.items];
   }
 }
 

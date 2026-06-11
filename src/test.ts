@@ -46,7 +46,7 @@ function assertCompleted(t: Case, evm: EVM) {
 function assertStackEqual(t: Case, evm: EVM) {
   const expected = t.expect.stack;
   const actual = evm.stack
-    .items()
+    .toArray()
     .reverse()
     .map((n) => "0x" + n.toString(16));
   try {

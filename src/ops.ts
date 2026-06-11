@@ -188,6 +188,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.PUSH0]: push0,
   [OpCode.PUSH1]: push1,
   [OpCode.PUSH2]: push2,
+  [OpCode.PUSH3]: push3,
   [OpCode.PUSH4]: push4,
   [OpCode.PUSH6]: push6,
   [OpCode.PUSH10]: push10,
@@ -195,6 +196,10 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.PUSH32]: push32,
   [OpCode.POP]: pop,
   [OpCode.SIGNEXTEND]: signextend,
+  [OpCode.DUP1]: dup1,
+  [OpCode.DUP3]: dup3,
+  [OpCode.DUP5]: dup5,
+  [OpCode.DUP8]: dup8,
 };
 
 function stop(evm: EVM): void {
@@ -483,6 +488,12 @@ function push2(evm: EVM): void {
   _push(evm, 2);
 }
 
+function push3(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 3);
+}
+
 function push4(evm: EVM): void {
   evm.pc += 1;
   evm.decrementGas(3n);
@@ -547,4 +558,36 @@ function signextend(evm: EVM): void {
 
   evm.pc += 1;
   evm.decrementGas(5n);
+}
+
+function dup1(evm: EVM): void {
+  _dup(evm, 0);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function dup3(evm: EVM): void {
+  _dup(evm, 2);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function dup5(evm: EVM): void {
+  _dup(evm, 4);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function dup8(evm: EVM): void {
+  _dup(evm, 7);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function _dup(evm: EVM, n: number): void {
+  const idx = evm.stack.items.length - 1 - n;
+  if (idx < 0 || idx >= evm.stack.items.length) {
+    throw new Error("stack underflow");
+  }
+  evm.stack.push(evm.stack.items[idx]);
 }
