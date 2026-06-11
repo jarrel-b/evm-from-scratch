@@ -3,12 +3,25 @@ import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
 import { State as EVM } from "./state.js";
 
+type Test = {
+  name: string;
+  hint: string;
+  code: {
+    asm: string;
+    bin: string;
+  };
+  expect: {
+    success: boolean;
+    stack: string[];
+  };
+};
+
 function run() {
   const testAddress = BigInt(0x1337);
   const gas = 21_000n;
   const value = 0n;
 
-  for (const t of tests as any) {
+  for (const t of tests as Test[]) {
     test(t.name, () => {
       const prog = hexStringToUint8Array(t.code.bin);
       const evm = new EVM(testAddress, prog, gas, value);
@@ -16,18 +29,25 @@ function run() {
       evm.run();
 
       assertCompleted(t.expect.success, evm);
-      assert.deepEqual(evm.stack.items(), t.expect.stack);
+      assertStackEqual(t.expect.stack, evm);
     });
   }
 }
 
-function assertCompleted(expected: boolean,  evm: EVM) {
-    try {
-      assert.equal(completed(evm), expected);
-    } catch (e) {
-      console.log(evm.pc, evm.program.length);
-      throw(e);
-    }
+function assertCompleted(expected: boolean, evm: EVM) {
+  try {
+    assert.equal(completed(evm), expected);
+  } catch (e) {
+    console.log(evm.pc, evm.program.length);
+    throw e;
+  }
+}
+
+function assertStackEqual(expected: string[], evm: EVM) {
+  assert.deepEqual(
+    expected.map((s) => BigInt(s)),
+    evm.stack.items(),
+  );
 }
 
 function completed(evm: EVM): boolean {
@@ -45,10 +65,10 @@ function hexStringToUint8Array(hexString: string): Uint8Array {
   for (let i = 0; i < clean.length; i += 2) {
     const high = parseInt(clean[i], 16);
     const low = parseInt(clean[i + 1], 16);
-    bytes[i / 2] = (high << 4 | low);
+    bytes[i / 2] = (high << 4) | low;
   }
 
-  return bytes
+  return bytes;
 }
 
 run();

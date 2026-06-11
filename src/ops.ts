@@ -65,6 +65,7 @@ export enum OpCode {
   JUMPI = 0x57,
   PC = 0x58,
   JUMPDEST = 0x5b,
+  PUSH0 = 0x5f,
   PUSH1 = 0x60,
   PUSH2 = 0x61,
   PUSH3 = 0x62,
@@ -182,6 +183,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.CODESIZE]: codesize,
   [OpCode.SLOAD]: sload,
   [OpCode.SSTORE]: sstore,
+  [OpCode.PUSH0]: push0,
   [OpCode.PUSH1]: push1,
 };
 
@@ -451,6 +453,12 @@ function sstore(evm: EVM): void {
   const cost = evm.storage.store(key, val);
   evm.pc += 1;
   evm.decrementGas(BigInt(cost));
+}
+
+function push0(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(2n);
+  evm.stack.push(0n);
 }
 
 function push1(evm: EVM): void {
