@@ -185,6 +185,12 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.SSTORE]: sstore,
   [OpCode.PUSH0]: push0,
   [OpCode.PUSH1]: push1,
+  [OpCode.PUSH2]: push2,
+  [OpCode.PUSH4]: push4,
+  [OpCode.PUSH6]: push6,
+  [OpCode.PUSH10]: push10,
+  [OpCode.PUSH11]: push11,
+  [OpCode.PUSH32]: push32,
 };
 
 function stop(evm: EVM): void {
@@ -464,7 +470,50 @@ function push0(evm: EVM): void {
 function push1(evm: EVM): void {
   evm.pc += 1;
   evm.decrementGas(3n);
-  const val = evm.peek();
-  evm.stack.push(BigInt(val));
+  _push(evm, 1);
+}
+
+function push2(evm: EVM): void {
   evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 2);
+}
+
+function push4(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 4);
+}
+
+function push6(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 6);
+}
+
+function push10(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 10);
+}
+
+function push11(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 11);
+}
+
+function push32(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 32);
+}
+
+function _push(evm: EVM, n: number): void {
+  let value = 0n
+  for (let i = 0; i < n; i++) {
+    value = value << 8n | BigInt(evm.peek());
+    evm.pc += 1;
+  }
+  evm.stack.push(value);
 }

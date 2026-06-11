@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
 import { State as EVM } from "./state.js";
 
-type Test = {
+type Case = {
   name: string;
   hint: string;
   code: {
@@ -21,33 +21,37 @@ function run() {
   const gas = 21_000n;
   const value = 0n;
 
-  for (const t of tests as Test[]) {
+  for (const t of tests as Case[]) {
     test(t.name, () => {
       const prog = hexStringToUint8Array(t.code.bin);
       const evm = new EVM(testAddress, prog, gas, value);
 
       evm.run();
 
-      assertCompleted(t.expect.success, evm);
-      assertStackEqual(t.expect.stack, evm);
+      assertCompleted(t, evm);
+      assertStackEqual(t, evm);
     });
   }
 }
 
-function assertCompleted(expected: boolean, evm: EVM) {
+function assertCompleted(t: Case, evm: EVM) {
   try {
-    assert.equal(completed(evm), expected);
+    assert.equal(completed(evm), t.expect.success);
   } catch (e) {
     console.log(evm.pc, evm.program.length);
     throw e;
   }
 }
 
-function assertStackEqual(expected: string[], evm: EVM) {
-  assert.deepEqual(
-    expected.map((s) => BigInt(s)),
-    evm.stack.items(),
-  );
+function assertStackEqual(t: Case, evm: EVM) {
+  try {
+    assert.deepEqual(
+      t.expect.stack,
+      evm.stack.items().map(n => '0x' + n.toString(16))
+    );
+  } catch (e) {
+    throw new Error(`${e}\nHint: ${t.hint}\nASM: ${t.code.asm}`);
+  }
 }
 
 function completed(evm: EVM): boolean {
