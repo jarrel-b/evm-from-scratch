@@ -1,16 +1,19 @@
+import { toUint256 } from "./uint256.js";
+import { OpCode, handlers } from "./ops.js";
+
 const MAXIMUM_STACK_SIZE = 1024;
 
 export class Stack {
-  #items: number[] = [];
+  #items: bigint[] = [];
 
-  push(value: number): void {
+  push(value: bigint): void {
     if (this.#items.length === MAXIMUM_STACK_SIZE) {
       throw new Error("stack overflow");
     }
-    this.#items.push(value);
+    this.#items.push(toUint256(value));
   }
 
-  pop(): number {
+  pop(): bigint {
     const value = this.#items.pop();
     if (value === undefined) {
       throw new Error("stack underflow");
@@ -18,7 +21,7 @@ export class Stack {
     return value;
   }
 
-  items(): number[] {
+  items(): bigint[] {
     return [...this.#items];
   }
 }
@@ -67,6 +70,7 @@ export class Memory {
 export class Storage {
   #slots = new Map<bigint, bigint>();
   #accessed = new Set<bigint>();
+  #originalValues = new Map<bigint, bigint>();
 
   load(slot: bigint): [boolean, bigint] {
     const warm = this.#accessed.has(slot);
@@ -75,30 +79,56 @@ export class Storage {
     return [warm, val ?? 0n];
   }
 
-  store(slot: bigint, val: bigint): void {
+  store(slot: bigint, val: bigint): number {
+    if (!this.#originalValues.get(slot)) {
+      this.#originalValues.set(slot, this.#slots.get(val) ?? 0n);
+    }
+
+    const warm = this.#accessed.has(slot);
     this.#accessed.add(slot);
+
+    const staticGas = 0;
+    const currentVal = this.#slots.get(slot);
+    const originalVal = this.#originalValues.get(slot) ?? 0n;
+
+    let baseDynamicGas = 0;
+    if (val === currentVal) {
+      baseDynamicGas = 100;
+    } else if (currentVal === originalVal) {
+      baseDynamicGas = originalVal === 0n ? 20000 : 2900;
+    } else {
+      baseDynamicGas = 100;
+    }
+
+    baseDynamicGas += warm ? 0 : 2100;
+
     if (val === 0n) {
       this.#slots.delete(slot);
-      return;
+    } else {
+      this.#slots.set(slot, val);
     }
-    this.#slots.set(slot, val);
+
+    return staticGas + baseDynamicGas;
   }
 }
 
 export class State {
-  #pc = 0;
-  #stack: Stack;
-  #memory: Memory;
-  #storage: Storage;
-  #stopFlag = false;
-  #revertFlag = false;
+  pc = 0;
+  stack = new Stack();
+  memory = new Memory();
+  storage = new Storage();
+
+  #gas: bigint;
+  value: bigint;
+  program: Readonly<Uint8Array>;
+  calldata?: Readonly<Uint8Array>;
+  sender: bigint;
+
+  stopFlag = false;
+  revertFlag = false;
+
   #returndata = [];
   #logs = [];
-  #sender: bigint;
-  #program: Readonly<Uint8Array>;
-  #gas: bigint;
-  #value: bigint;
-  #calldata?: Readonly<Uint8Array>;
 
   constructor(
     sender: bigint,
@@ -107,13 +137,51 @@ export class State {
     value: bigint,
     calldata?: Uint8Array,
   ) {
-    this.#stack = new Stack();
-    this.#memory = new Memory();
-    this.#storage = new Storage();
-    this.#sender = sender;
-    this.#program = program;
+    this.sender = sender;
+    this.value = value;
+    this.program = program;
     this.#gas = gas;
-    this.#value = value;
-    this.#calldata = calldata;
+    this.calldata = calldata;
+  }
+
+  decrementGas(amount: bigint): void {
+    if (this.#gas - amount < 0) {
+      throw new Error("out of gas");
+    }
+  }
+
+  shouldExecute(): boolean {
+    if (this.pc >= this.program.length) {
+      return false;
+    }
+    if (this.stopFlag) {
+      return false;
+    }
+    if (this.revertFlag) {
+      return false;
+    }
+    return true;
+  }
+
+  peek(): number {
+    return this.program[this.pc];
+  }
+
+  run(): void {
+    while (this.shouldExecute()) {
+      const op = this.program[this.pc] as OpCode;
+      const handler = handlers[op];
+      if (handler === undefined) {
+        throw new Error(`unimplemnted opcode: 0x${op.toString(16)}`);
+      }
+      handler(this);
+    }
+  }
+
+  reset(): void {
+    this.pc = 0;
+    this.stack = new Stack();
+    this.memory = new Memory();
+    this.storage = new Storage();
   }
 }

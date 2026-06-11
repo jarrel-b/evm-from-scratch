@@ -1,6 +1,8 @@
-import type { State } from "./state.js";
+import type { State as EVM } from "./state.js";
+import { toSigned, byteSize, arrayToUint256 } from "./uint256.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
 
-enum OpCode {
+export enum OpCode {
   STOP = 0x00,
   ADD = 0x01,
   MUL = 0x02,
@@ -142,4 +144,319 @@ enum OpCode {
   REVERT = 0xfd,
   INVALID = 0xfe,
   SELFDESTRUCT = 0xff,
+}
+
+export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
+  [OpCode.STOP]: stop,
+  [OpCode.ADD]: add,
+  [OpCode.MUL]: mul,
+  [OpCode.SUB]: sub,
+  [OpCode.DIV]: div,
+  [OpCode.SDIV]: sdiv,
+  [OpCode.MOD]: mod,
+  [OpCode.SMOD]: smod,
+  [OpCode.ADDMOD]: addmod,
+  [OpCode.MULMOD]: mulmod,
+  [OpCode.EXP]: exp,
+  [OpCode.LT]: lt,
+  [OpCode.GT]: gt,
+  [OpCode.SLT]: slt,
+  [OpCode.SGT]: sgt,
+  [OpCode.EQ]: eq,
+  [OpCode.ISZERO]: iszero,
+  [OpCode.AND]: and,
+  [OpCode.OR]: or,
+  [OpCode.XOR]: xor,
+  [OpCode.NOT]: not,
+  [OpCode.BYTE]: byte,
+  [OpCode.SHL]: shl,
+  [OpCode.SHR]: shr,
+  [OpCode.SAR]: sar,
+  [OpCode.KECCAK256]: keccak256,
+  [OpCode.ADDRESS]: address,
+  [OpCode.BALANCE]: balance,
+  [OpCode.ORIGIN]: origin,
+  [OpCode.CALLER]: caller,
+  [OpCode.CALLVALUE]: callvalue,
+  [OpCode.CALLDATALOAD]: calldataload,
+  [OpCode.CODESIZE]: codesize,
+  [OpCode.SLOAD]: sload,
+  [OpCode.SSTORE]: sstore,
+  [OpCode.PUSH1]: push1,
+};
+
+function stop(evm: EVM): void {
+  evm.stopFlag = true;
+}
+
+function add(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a + b);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function mul(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a * b);
+  evm.pc += 1;
+  evm.decrementGas(5n);
+}
+
+function sub(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a - b);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function div(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(b === 0n ? 0n : a / b);
+  evm.pc += 1;
+  evm.decrementGas(5n);
+}
+
+function sdiv(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(b === 0n ? 0n : toSigned(a) / toSigned(b));
+  evm.pc += 1;
+  evm.decrementGas(5n);
+}
+
+function mod(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(b === 0n ? 0n : a % b);
+  evm.pc += 1;
+  evm.decrementGas(5n);
+}
+
+function smod(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(b === 0n ? 0n : toSigned(a) % toSigned(b));
+  evm.pc += 1;
+  evm.decrementGas(5n);
+}
+
+function addmod(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  const N = evm.stack.pop();
+  evm.stack.push((a + b) % N);
+  evm.pc += 1;
+  evm.decrementGas(8n);
+}
+
+function mulmod(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  const N = evm.stack.pop();
+  evm.stack.push((a * b) % N);
+  evm.pc += 1;
+  evm.decrementGas(8n);
+}
+
+function exp(evm: EVM): void {
+  const a = evm.stack.pop();
+  const exponent = evm.stack.pop();
+  evm.stack.push(a ** exponent);
+  evm.pc += 1;
+  evm.decrementGas(10n + 50n * byteSize(exponent));
+}
+
+function lt(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a < b ? 1n : 0n);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function gt(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a > b ? 1n : 0n);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function slt(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(toSigned(a) < toSigned(b) ? 1n : 0n);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function sgt(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(toSigned(a) > toSigned(b) ? 1n : 0n);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function eq(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a === b ? 1n : 0n);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function iszero(evm: EVM): void {
+  const a = evm.stack.pop();
+  evm.stack.push(a === 0n ? 1n : 0n);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function and(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a & b);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function or(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a | b);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function xor(evm: EVM): void {
+  const a = evm.stack.pop();
+  const b = evm.stack.pop();
+  evm.stack.push(a ^ b);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function not(evm: EVM): void {
+  const a = evm.stack.pop();
+  evm.stack.push(~a);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function byte(evm: EVM): void {
+  const i = evm.stack.pop();
+  const x = evm.stack.pop();
+  evm.stack.push(i >= 32 ? 0n : (x >> (8n * (31n - i))) & 0xffn);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function shl(evm: EVM): void {
+  const shift = evm.stack.pop();
+  const value = evm.stack.pop();
+  evm.stack.push(value << shift);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function shr(evm: EVM): void {
+  const shift = evm.stack.pop();
+  const value = evm.stack.pop();
+  evm.stack.push(value >> shift);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function sar(evm: EVM): void {
+  const shift = evm.stack.pop();
+  const value = evm.stack.pop();
+  evm.stack.push(toSigned(value) >> shift);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function keccak256(evm: EVM): void {
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+  const data = evm.memory.access(Number(offset), Number(size));
+  evm.stack.push(arrayToUint256(keccak_256(data)));
+}
+
+function address(evm: EVM): void {
+  evm.stack.push(evm.sender);
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function balance(evm: EVM): void {
+  evm.stack.push(99999999999n);
+  evm.pc += 1;
+  // 100 if warm
+  evm.decrementGas(2600n);
+}
+
+function origin(evm: EVM): void {
+  evm.stack.push(evm.sender);
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function caller(evm: EVM): void {
+  evm.stack.push(BigInt("0xbe862ad9abfe6f22bcb087716c7d89a26051f74c"));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function callvalue(evm: EVM): void {
+  evm.stack.push(evm.value);
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function calldataload(evm: EVM): void {
+  const i = Number(evm.stack.pop());
+  let data = 0n;
+  for (let offset = 0; offset < 32; offset++) {
+    const byte = evm.calldata?.[i + offset] ?? 0n;
+    data = (data << 8n) | BigInt(byte);
+  }
+  evm.stack.push(data);
+  evm.pc += 1;
+  evm.decrementGas(3n);
+}
+
+function codesize(evm: EVM): void {
+  evm.stack.push(BigInt(evm.program.length));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function sload(evm: EVM): void {
+  const key = evm.stack.pop();
+  const [warm, val] = evm.storage.load(key);
+  evm.stack.push(val);
+  evm.pc += 1;
+  evm.decrementGas(warm ? 100n : 2100n);
+}
+
+function sstore(evm: EVM): void {
+  const key = evm.stack.pop();
+  const val = evm.stack.pop();
+  const cost = evm.storage.store(key, val);
+  evm.pc += 1;
+  evm.decrementGas(BigInt(cost));
+}
+
+function push1(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  const val = evm.peek();
+  evm.stack.push(BigInt(val));
+  evm.pc += 1;
 }
