@@ -2,6 +2,8 @@ import type { State as EVM } from "./state.js";
 import { toSigned, byteSize, arrayToUint256 } from "./uint256.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 
+const UINT256_MASK = (1n << 256n) - 1n;
+
 export enum OpCode {
   STOP = 0x00,
   ADD = 0x01,
@@ -191,6 +193,8 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.PUSH10]: push10,
   [OpCode.PUSH11]: push11,
   [OpCode.PUSH32]: push32,
+  [OpCode.POP]: pop,
+  [OpCode.SIGNEXTEND]: signextend,
 };
 
 function stop(evm: EVM): void {
@@ -365,10 +369,10 @@ function byte(evm: EVM): void {
   evm.decrementGas(3n);
 }
 
-function shl(evm: EVM): void {
+function shl(evm: EVM): void{
   const shift = evm.stack.pop();
   const value = evm.stack.pop();
-  evm.stack.push(value << shift);
+  evm.stack.push(shift >= 256n ? 0n : value << shift);
   evm.pc += 1;
   evm.decrementGas(3n);
 }
@@ -516,4 +520,31 @@ function _push(evm: EVM, n: number): void {
     evm.pc += 1;
   }
   evm.stack.push(value);
+}
+
+function pop(evm: EVM): void {
+  evm.stack.pop();
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function signextend(evm: EVM): void {
+  const b = evm.stack.pop();
+  const x = evm.stack.pop();
+
+  if (b >= 32) {
+    evm.stack.push(x & UINT256_MASK);
+  } else {
+    const signBitIdx = 8n * b + 7n;
+    const signBit = 1n << signBitIdx;
+    const mask = (1n << (signBitIdx + 1n)) - 1n;
+    if ((x & signBit) !== 0n) {
+      evm.stack.push((x | ~mask) & UINT256_MASK);
+    } else {
+      evm.stack.push(x & mask);
+    }
+  }
+
+  evm.pc += 1;
+  evm.decrementGas(5n);
 }
