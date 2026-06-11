@@ -369,7 +369,7 @@ function byte(evm: EVM): void {
   evm.decrementGas(3n);
 }
 
-function shl(evm: EVM): void{
+function shl(evm: EVM): void {
   const shift = evm.stack.pop();
   const value = evm.stack.pop();
   evm.stack.push(shift >= 256n ? 0n : value << shift);
@@ -514,9 +514,9 @@ function push32(evm: EVM): void {
 }
 
 function _push(evm: EVM, n: number): void {
-  let value = 0n
+  let value = 0n;
   for (let i = 0; i < n; i++) {
-    value = value << 8n | BigInt(evm.peek());
+    value = (value << 8n) | BigInt(evm.peek());
     evm.pc += 1;
   }
   evm.stack.push(value);

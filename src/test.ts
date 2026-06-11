@@ -45,11 +45,16 @@ function assertCompleted(t: Case, evm: EVM) {
 
 function assertStackEqual(t: Case, evm: EVM) {
   const expected = t.expect.stack;
-  const actual = evm.stack.items().reverse().map(n => '0x' + n.toString(16));
+  const actual = evm.stack
+    .items()
+    .reverse()
+    .map((n) => "0x" + n.toString(16));
   try {
     assert.deepEqual(expected, actual);
   } catch (e) {
-    throw new Error(`${e}\nHint: ${t.hint}\nASM: ${t.code.asm}\nExpected: ${expected}\nActual: ${actual}`);
+    throw new Error(
+      `${e}\nHint: ${t.hint}\nASM: ${t.code.asm}\nExpected: ${expected}\nActual: ${actual}`,
+    );
   }
 }
 
