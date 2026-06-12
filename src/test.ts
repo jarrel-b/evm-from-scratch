@@ -74,6 +74,8 @@ function run() {
         });
       }
       const evm = new EVM(tx, prog, 21_000n, block);
+      evm.writable = true;
+
       let success = true;
 
       try {

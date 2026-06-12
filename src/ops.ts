@@ -243,6 +243,8 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.CALL]: call,
   [OpCode.RETURNDATASIZE]: returndatasize,
   [OpCode.RETURNDATACOPY]: returndatacopy,
+  [OpCode.DELEGATECALL]: delegatecall,
+  [OpCode.STATICCALL]: staticcall,
 };
 
 function stop(evm: EVM): void {
@@ -508,6 +510,8 @@ function sload(evm: EVM): void {
 }
 
 function sstore(evm: EVM): void {
+  requireWritable(evm);
+
   const key = evm.stack.pop();
   const val = evm.stack.pop();
   const cost = evm.storage.store(key, val);
@@ -936,6 +940,7 @@ function log4(evm: EVM): void {
 }
 
 function _log(evm: EVM, n: number): void {
+  requireWritable(evm);
   const offset = evm.stack.pop();
   const size = evm.stack.pop();
   let topics = [];
@@ -967,6 +972,101 @@ function revert(evm: EVM): void {
   evm.decrementGas(BigInt(cost));
 }
 
+function requireWritable(evm: EVM): void {
+  if (!evm.writable) {
+    throw new Error("require writable");
+  }
+}
+
+function staticcall(evm: EVM): void {
+  const gas = evm.stack.pop();
+  const address = uint256.toAddress(evm.stack.pop());
+  const argsOffset = evm.stack.pop();
+  const argsSize = evm.stack.pop();
+  const retOffset = evm.stack.pop();
+  const retSize = evm.stack.pop();
+
+  const code = worldState.accounts.get(address)?.code ?? new Uint8Array(0);
+
+  const [calldata, memoryCost] = evm.memory.load(
+    Number(argsOffset),
+    Number(argsSize),
+  );
+
+  const tx: Tx = {
+    origin: evm.tx.origin,
+    from: evm.tx.to,
+    to: address,
+    value: 0n,
+    gasprice: evm.tx.gasprice,
+    calldata: calldata,
+  };
+
+  const ctx = new EVM(tx, code, gas, evm.block);
+  ctx.storage = evm.storage;
+
+  let success = true;
+
+  try {
+    ctx.run();
+  } catch (e) {
+    success = false;
+  }
+
+  evm.stack.push(success && !ctx.revertFlag ? 1n : 0n);
+  evm.memory.store(Number(retOffset), ctx.returndata.slice(0, Number(retSize)));
+  evm.lastReturnData = ctx.returndata;
+
+  // TODO: Gas calc
+  evm.pc += 1;
+  evm.decrementGas(BigInt(memoryCost));
+}
+
+function delegatecall(evm: EVM): void {
+  const gas = evm.stack.pop();
+  const address = uint256.toAddress(evm.stack.pop());
+  const argsOffset = evm.stack.pop();
+  const argsSize = evm.stack.pop();
+  const retOffset = evm.stack.pop();
+  const retSize = evm.stack.pop();
+
+  const code = worldState.accounts.get(address)?.code ?? new Uint8Array(0);
+
+  const [calldata, memoryCost] = evm.memory.load(
+    Number(argsOffset),
+    Number(argsSize),
+  );
+
+  const tx: Tx = {
+    origin: evm.tx.origin,
+    from: evm.tx.from,
+    to: evm.tx.to,
+    value: evm.tx.value,
+    gasprice: evm.tx.gasprice,
+    calldata: calldata,
+  };
+
+  const ctx = new EVM(tx, code, gas, evm.block);
+  ctx.storage = evm.storage;
+  ctx.writable = evm.writable;
+
+  let success = true;
+
+  try {
+    ctx.run();
+  } catch (e) {
+    success = false;
+  }
+
+  evm.stack.push(success && !ctx.revertFlag ? 1n : 0n);
+  evm.memory.store(Number(retOffset), ctx.returndata.slice(0, Number(retSize)));
+  evm.lastReturnData = ctx.returndata;
+
+  // TODO: Gas calc
+  evm.pc += 1;
+  evm.decrementGas(BigInt(memoryCost));
+}
+
 function call(evm: EVM): void {
   const gas = evm.stack.pop();
   const address = uint256.toAddress(evm.stack.pop());
@@ -975,11 +1075,18 @@ function call(evm: EVM): void {
   const argsSize = evm.stack.pop();
   const retOffset = evm.stack.pop();
   const retSize = evm.stack.pop();
+
+  if (value >= 0n) {
+    requireWritable(evm);
+  }
+
   const code = worldState.accounts.get(address)?.code ?? new Uint8Array(0);
+
   const [calldata, memoryCost] = evm.memory.load(
     Number(argsOffset),
     Number(argsSize),
   );
+
   const tx: Tx = {
     origin: evm.tx.origin,
     from: evm.tx.to,

@@ -151,6 +151,7 @@ export class EVM {
 
   stopFlag = false;
   revertFlag = false;
+  writable = false;
 
   returndata: Uint8Array = new Uint8Array();
   lastReturnData: Uint8Array = new Uint8Array();
