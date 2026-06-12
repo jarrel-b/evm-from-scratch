@@ -14,6 +14,11 @@ Run tests:
 npm run test
 ```
 
+TODO:
+[x] Implement all OPs
+[] Add gas calculation
+[] Add tracing
+
 ## Resources
 
 - [EVM Codes](https://www.evm.codes/)

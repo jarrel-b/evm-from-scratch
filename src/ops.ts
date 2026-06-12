@@ -1,4 +1,5 @@
-import type { EVM, Log } from "./evm.js";
+import type { Tx } from "./evm.js";
+import { EVM } from "./evm.js";
 import * as uint256 from "./uint256.js";
 import { worldState } from "./state.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
@@ -239,6 +240,9 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.LOG4]: log4,
   [OpCode.RETURN]: return_,
   [OpCode.REVERT]: revert,
+  [OpCode.CALL]: call,
+  [OpCode.RETURNDATASIZE]: returndatasize,
+  [OpCode.RETURNDATACOPY]: returndatacopy,
 };
 
 function stop(evm: EVM): void {
@@ -961,4 +965,62 @@ function revert(evm: EVM): void {
   evm.returndata = data;
   evm.revertFlag = true;
   evm.decrementGas(BigInt(cost));
+}
+
+function call(evm: EVM): void {
+  const gas = evm.stack.pop();
+  const address = uint256.toAddress(evm.stack.pop());
+  const value = evm.stack.pop();
+  const argsOffset = evm.stack.pop();
+  const argsSize = evm.stack.pop();
+  const retOffset = evm.stack.pop();
+  const retSize = evm.stack.pop();
+  const code = worldState.accounts.get(address)?.code ?? new Uint8Array(0);
+  const [calldata, memoryCost] = evm.memory.load(
+    Number(argsOffset),
+    Number(argsSize),
+  );
+  const tx: Tx = {
+    origin: evm.tx.origin,
+    from: evm.tx.to,
+    to: address,
+    value: value,
+    gasprice: value,
+    calldata: calldata,
+  };
+
+  const ctx = new EVM(tx, code, gas, evm.block);
+  let success = true;
+
+  try {
+    ctx.run();
+  } catch (e) {
+    success = false;
+  }
+
+  evm.stack.push(success && !ctx.revertFlag ? 1n : 0n);
+  evm.memory.store(Number(retOffset), ctx.returndata.slice(0, Number(retSize)));
+  evm.lastReturnData = ctx.returndata;
+
+  // TODO: Gas calc
+  evm.pc += 1;
+  evm.decrementGas(BigInt(memoryCost));
+}
+
+function returndatasize(evm: EVM): void {
+  evm.stack.push(BigInt(evm.lastReturnData.length));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function returndatacopy(evm: EVM): void {
+  const destOffset = evm.stack.pop();
+  const offset = Number(evm.stack.pop());
+  const size = Number(evm.stack.pop());
+  const expansionCost = evm.memory.store(
+    Number(destOffset),
+    evm.lastReturnData.slice(offset, offset + size),
+  );
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
 }

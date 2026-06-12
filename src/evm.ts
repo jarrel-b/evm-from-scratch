@@ -153,6 +153,8 @@ export class EVM {
   revertFlag = false;
 
   returndata: Uint8Array = new Uint8Array();
+  lastReturnData: Uint8Array = new Uint8Array();
+
   logs: Log[] = [];
 
   constructor(tx: Tx, program: Uint8Array, gas: bigint, block: Block) {
