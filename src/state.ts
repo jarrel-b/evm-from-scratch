@@ -114,6 +114,7 @@ export class Storage {
 }
 
 export type Tx = {
+  origin: bigint;
   from: bigint;
   to: bigint;
   value: bigint;

@@ -7,8 +7,10 @@ import { UnimplementedOpcodeError } from "./errors.js";
 type TestCase = {
   name: string;
   hint: string;
-  tx: {
+  tx?: {
+    from: string;
     to: string;
+    origin: string;
   };
   code: {
     asm: string;
@@ -24,7 +26,10 @@ function run() {
   for (const t of tests as TestCase[]) {
     test(t.name, () => {
       const prog = hexStringToUint8Array(t.code.bin);
-      const tx: Tx = { from: 0n, to: BigInt(t.tx?.to ?? "0x0"), value: 0n };
+      const origin = BigInt(t.tx?.origin ?? 0);
+      const from = BigInt(t.tx?.from ?? 0);
+      const to = BigInt(t.tx?.to ?? 0);
+      const tx: Tx = { origin: origin, from: from, to: to, value: 0n };
       const evm = new EVM(tx, prog, 21_000n);
       let success = true;
 

@@ -435,13 +435,13 @@ function balance(evm: EVM): void {
 }
 
 function origin(evm: EVM): void {
-  evm.stack.push(evm.tx.from);
+  evm.stack.push(evm.tx.origin);
   evm.pc += 1;
   evm.decrementGas(2n);
 }
 
 function caller(evm: EVM): void {
-  evm.stack.push(BigInt("0xbe862ad9abfe6f22bcb087716c7d89a26051f74c"));
+  evm.stack.push(evm.tx.from);
   evm.pc += 1;
   evm.decrementGas(2n);
 }
