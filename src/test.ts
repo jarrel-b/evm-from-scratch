@@ -1,7 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
-import { Tx, Block, EVM } from "./evm.js";
+import { Tx, Block, EVM, Log } from "./evm.js";
 import { worldState } from "./state.js";
 import { UnimplementedOpcodeError } from "./errors.js";
 
@@ -36,6 +36,11 @@ type TestCase = {
   expect: {
     success: boolean;
     stack: string[];
+    logs?: {
+      address: string;
+      data: string;
+      topics: string[];
+    }[];
   };
 };
 
@@ -83,12 +88,28 @@ function run() {
 
       assert.equal(success, t.expect.success);
       assertStackEqual(t, evm);
+      assertLogsEqual(t, evm.logs);
     });
   }
 }
 
+function assertLogsEqual(t: TestCase, logs: Log[]) {
+  const expected = (t.expect.logs ?? []).map((l) => {
+    return {
+      address: BigInt(l.address),
+      data: hexToBytes(l.data),
+      topics: l.topics.map((l) => BigInt(l)),
+    };
+  });
+  try {
+    assert.deepEqual(expected, logs);
+  } catch (e) {
+    throw e;
+  }
+}
+
 function assertStackEqual(t: TestCase, evm: EVM) {
-  const expected = t.expect.stack;
+  const expected = t.expect.stack ?? [];
   const actual = evm.stack
     .toArray()
     .reverse()

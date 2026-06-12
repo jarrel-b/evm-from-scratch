@@ -35,8 +35,8 @@ export class Memory {
     return [this.bytes.slice(offset, offset + size), cost];
   }
 
-  load(offset: number): [Uint8Array, number] {
-    return this.access(offset, 32);
+  load(offset: number, size: number): [Uint8Array, number] {
+    return this.access(offset, size);
   }
 
   store(offset: number, value: Uint8Array): number {
@@ -132,6 +132,12 @@ export type Block = {
   chainid: bigint;
 };
 
+export type Log = {
+  address: bigint;
+  data: Uint8Array;
+  topics: bigint[];
+};
+
 export class EVM {
   pc = 0;
   stack = new Stack();
@@ -147,7 +153,7 @@ export class EVM {
   revertFlag = false;
 
   #returndata = [];
-  #logs = [];
+  logs: Log[] = [];
 
   constructor(tx: Tx, program: Uint8Array, gas: bigint, block: Block) {
     this.tx = tx;

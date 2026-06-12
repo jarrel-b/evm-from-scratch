@@ -1,4 +1,4 @@
-import type { EVM } from "./evm.js";
+import type { EVM, Log } from "./evm.js";
 import * as uint256 from "./uint256.js";
 import { worldState } from "./state.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
@@ -232,6 +232,11 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.EXTCODECOPY]: extcodecopy,
   [OpCode.EXTCODEHASH]: extcodehash,
   [OpCode.SELFBALANCE]: selfbalance,
+  [OpCode.LOG0]: log0,
+  [OpCode.LOG1]: log1,
+  [OpCode.LOG2]: log2,
+  [OpCode.LOG3]: log3,
+  [OpCode.LOG4]: log4,
 };
 
 function stop(evm: EVM): void {
@@ -749,7 +754,7 @@ function jumpdest(evm: EVM): void {
 
 function mload(evm: EVM): void {
   const offset = evm.stack.pop();
-  const [value, expansionCost] = evm.memory.load(Number(offset));
+  const [value, expansionCost] = evm.memory.load(Number(offset), 32);
   evm.stack.push(uint256.bytesToUint(value));
   evm.pc += 1;
   evm.decrementGas(3n + BigInt(expansionCost));
@@ -902,4 +907,37 @@ function selfbalance(evm: EVM): void {
   evm.stack.push(balance);
   evm.pc += 1;
   evm.decrementGas(5n);
+}
+
+function log0(evm: EVM): void {
+  _log(evm, 0);
+}
+
+function log1(evm: EVM): void {
+  _log(evm, 1);
+}
+
+function log2(evm: EVM): void {
+  _log(evm, 2);
+}
+
+function log3(evm: EVM): void {
+  _log(evm, 3);
+}
+
+function log4(evm: EVM): void {
+  _log(evm, 4);
+}
+
+function _log(evm: EVM, n: number): void {
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+  let topics = [];
+  for (let i = 0; i < n; i++) {
+    topics.push(evm.stack.pop());
+  }
+  const [data, cost] = evm.memory.load(Number(offset), Number(size));
+  evm.logs.push({ address: evm.tx.to, data: data, topics: topics });
+  evm.pc += 1;
+  evm.decrementGas(375n + BigInt(cost));
 }
