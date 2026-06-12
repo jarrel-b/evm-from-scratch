@@ -1,8 +1,6 @@
 import type { State as EVM } from "./state.js";
-import { toSigned, byteSize, arrayToUint256 } from "./uint256.js";
+import * as uint256 from "./uint256.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
-
-const UINT256_MASK = (1n << 256n) - 1n;
 
 export enum OpCode {
   STOP = 0x00,
@@ -66,6 +64,7 @@ export enum OpCode {
   JUMP = 0x56,
   JUMPI = 0x57,
   PC = 0x58,
+  MSIZE = 0x59,
   GAS = 0x5a,
   JUMPDEST = 0x5b,
   PUSH0 = 0x5f,
@@ -211,6 +210,10 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.JUMP]: jump,
   [OpCode.JUMPDEST]: jumpdest,
   [OpCode.JUMPI]: jumpi,
+  [OpCode.MLOAD]: mload,
+  [OpCode.MSTORE]: mstore,
+  [OpCode.MSTORE8]: mstore8,
+  [OpCode.MSIZE]: msize,
 };
 
 function stop(evm: EVM): void {
@@ -252,7 +255,7 @@ function div(evm: EVM): void {
 function sdiv(evm: EVM): void {
   const a = evm.stack.pop();
   const b = evm.stack.pop();
-  evm.stack.push(b === 0n ? 0n : toSigned(a) / toSigned(b));
+  evm.stack.push(b === 0n ? 0n : uint256.toSigned(a) / uint256.toSigned(b));
   evm.pc += 1;
   evm.decrementGas(5n);
 }
@@ -268,7 +271,7 @@ function mod(evm: EVM): void {
 function smod(evm: EVM): void {
   const a = evm.stack.pop();
   const b = evm.stack.pop();
-  evm.stack.push(b === 0n ? 0n : toSigned(a) % toSigned(b));
+  evm.stack.push(b === 0n ? 0n : uint256.toSigned(a) % uint256.toSigned(b));
   evm.pc += 1;
   evm.decrementGas(5n);
 }
@@ -296,7 +299,7 @@ function exp(evm: EVM): void {
   const exponent = evm.stack.pop();
   evm.stack.push(a ** exponent);
   evm.pc += 1;
-  evm.decrementGas(10n + 50n * byteSize(exponent));
+  evm.decrementGas(10n + 50n * uint256.byteSize(exponent));
 }
 
 function lt(evm: EVM): void {
@@ -318,7 +321,7 @@ function gt(evm: EVM): void {
 function slt(evm: EVM): void {
   const a = evm.stack.pop();
   const b = evm.stack.pop();
-  evm.stack.push(toSigned(a) < toSigned(b) ? 1n : 0n);
+  evm.stack.push(uint256.toSigned(a) < uint256.toSigned(b) ? 1n : 0n);
   evm.pc += 1;
   evm.decrementGas(3n);
 }
@@ -326,7 +329,7 @@ function slt(evm: EVM): void {
 function sgt(evm: EVM): void {
   const a = evm.stack.pop();
   const b = evm.stack.pop();
-  evm.stack.push(toSigned(a) > toSigned(b) ? 1n : 0n);
+  evm.stack.push(uint256.toSigned(a) > uint256.toSigned(b) ? 1n : 0n);
   evm.pc += 1;
   evm.decrementGas(3n);
 }
@@ -404,7 +407,7 @@ function shr(evm: EVM): void {
 function sar(evm: EVM): void {
   const shift = evm.stack.pop();
   const value = evm.stack.pop();
-  evm.stack.push(toSigned(value) >> shift);
+  evm.stack.push(uint256.toSigned(value) >> shift);
   evm.pc += 1;
   evm.decrementGas(3n);
 }
@@ -412,8 +415,10 @@ function sar(evm: EVM): void {
 function keccak256(evm: EVM): void {
   const offset = evm.stack.pop();
   const size = evm.stack.pop();
-  const data = evm.memory.access(Number(offset), Number(size));
-  evm.stack.push(arrayToUint256(keccak_256(data)));
+  const [data, expansionCost] = evm.memory.access(Number(offset), Number(size));
+  evm.stack.push(uint256.arrayToUint256(keccak_256(data)));
+  evm.pc += 1;
+  evm.decrementGas(30n + BigInt(expansionCost));
 }
 
 function address(evm: EVM): void {
@@ -555,13 +560,13 @@ function signextend(evm: EVM): void {
   const x = evm.stack.pop();
 
   if (b >= 32) {
-    evm.stack.push(x & UINT256_MASK);
+    evm.stack.push(x & uint256.UINT256_MASK);
   } else {
     const signBitIdx = 8n * b + 7n;
     const signBit = 1n << signBitIdx;
     const mask = (1n << (signBitIdx + 1n)) - 1n;
     if ((x & signBit) !== 0n) {
-      evm.stack.push((x | ~mask) & UINT256_MASK);
+      evm.stack.push((x | ~mask) & uint256.UINT256_MASK);
     } else {
       evm.stack.push(x & mask);
     }
@@ -687,13 +692,13 @@ function jumpi(evm: EVM): void {
     throw new Error(`invalid jump destination`);
   }
 
-  evm.pc = Number(counter);;
+  evm.pc = Number(counter);
   evm.decrementGas(10n);
 }
 
 function _isValidJumpDest(program: Uint8Array, dest: number): boolean {
   if (dest < 0 || dest >= program.length) {
-    return false
+    return false;
   }
 
   for (let pc = 0; pc < program.length; ) {
@@ -710,10 +715,43 @@ function _isValidJumpDest(program: Uint8Array, dest: number): boolean {
     }
   }
 
-  return false
+  return false;
 }
 
 function jumpdest(evm: EVM): void {
   evm.pc += 1;
   evm.decrementGas(1n);
+}
+
+function mload(evm: EVM): void {
+  const offset = evm.stack.pop();
+  const [value, expansionCost] = evm.memory.load(Number(offset));
+  evm.stack.push(uint256.arrayToUint256(value));
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function mstore(evm: EVM): void {
+  const offset = evm.stack.pop();
+  const value = evm.stack.pop();
+  const expansionCost = evm.memory.store(
+    Number(offset),
+    uint256.bigintToUint8Array(value),
+  );
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function mstore8(evm: EVM): void {
+  const offset = evm.stack.pop();
+  const value = evm.stack.pop();
+  const expansionCost = evm.memory.store(Number(offset), uint256.toByte(value));
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function msize(evm: EVM): void {
+  evm.stack.push(BigInt(evm.memory.bytes.length));
+  evm.pc += 1
+  evm.decrementGas(2n);
 }

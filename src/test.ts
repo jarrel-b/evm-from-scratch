@@ -33,7 +33,7 @@ function run() {
         success = !evm.revertFlag;
       } catch (e) {
         if (e instanceof UnimplementedOpcodeError) {
-          throw (e)
+          throw e;
         } else {
           success = false;
         }

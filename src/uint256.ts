@@ -1,15 +1,15 @@
-export const UINT256_MODULUS = 2n ** 256n;
-
-const SIGN_BIT = 2n ** 255n;
+export const UINT256_MODULUS = 1n << 256n;
+const SIGN_BIT = 1n << 255n;
+export const UINT256_MASK = (1n << 256n) - 1n;
 
 // JS's % can return a negative result (e.g. -1n % 256n === -1n).
 // (x % M + M) % M guarantees the result is always in [0, M).
 export function toUint256(value: bigint): bigint {
-  return ((value % UINT256_MODULUS) + UINT256_MODULUS) % UINT256_MODULUS;
+  return value & UINT256_MASK;
 }
 
 export function toSigned(value: bigint): bigint {
-  return value >= SIGN_BIT ? value - UINT256_MODULUS : value;
+  return (value & SIGN_BIT) !== 0n ? value - UINT256_MODULUS : value;
 }
 
 export function byteSize(value: bigint): bigint {
@@ -20,4 +20,18 @@ export function arrayToUint256(bytes: Uint8Array): bigint {
   return bytes.reduce((acc, byte) => {
     return (acc << 8n) | BigInt(byte);
   }, 0n);
+}
+
+export function bigintToUint8Array(value: bigint): Uint8Array {
+  value &= UINT256_MASK;
+  const bytes = new Uint8Array(32);
+  for (let i = 31; i >= 0; i--) {
+    bytes[i] = Number(value & 0xffn);
+    value >>= 8n;
+  }
+  return bytes;
+}
+
+export function toByte(value: bigint): Uint8Array {
+  return new Uint8Array([Number(value & 0xffn)]);
 }

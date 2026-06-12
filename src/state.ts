@@ -28,35 +28,35 @@ export class Stack {
 }
 
 export class Memory {
-  #bytes = new Uint8Array();
+  bytes = new Uint8Array();
 
-  access(offset: number, size: number): Uint8Array {
-    this.#expand(offset, size);
-    return this.#bytes.slice(offset, offset + size);
+  access(offset: number, size: number): [Uint8Array, number] {
+    const cost = this.#expand(offset, size);
+    return [this.bytes.slice(offset, offset + size), cost];
   }
 
-  load(offset: number): Uint8Array {
+  load(offset: number): [Uint8Array, number] {
     return this.access(offset, 32);
   }
 
   store(offset: number, value: Uint8Array): number {
     const gasCost = this.#expand(offset, value.length);
-    this.#bytes.set(value, offset);
+    this.bytes.set(value, offset);
     return gasCost;
   }
 
   #expand(offset: number, size: number): number {
     const requiredBytes = offset + size;
-    if (requiredBytes <= this.#bytes.length) {
+    if (requiredBytes <= this.bytes.length) {
       return 0;
     }
 
-    const oldSize = this.#bytes.length;
+    const oldSize = this.bytes.length;
     const newSize = Math.ceil(requiredBytes / 32) * 32;
     const newBytes = new Uint8Array(newSize);
 
-    newBytes.set(this.#bytes);
-    this.#bytes = newBytes;
+    newBytes.set(this.bytes);
+    this.bytes = newBytes;
 
     return this.#gasCost(requiredBytes) - this.#gasCost(oldSize);
   }
@@ -172,7 +172,7 @@ export class State {
     let steps = 0;
     while (this.shouldExecute()) {
       if (steps++ >= maxSteps) {
-        throw new Error(`execution step limit exceeded`)
+        throw new Error(`execution step limit exceeded`);
       }
 
       const op = this.program[this.pc] as OpCode;
