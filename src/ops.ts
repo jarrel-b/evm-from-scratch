@@ -237,6 +237,8 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.LOG2]: log2,
   [OpCode.LOG3]: log3,
   [OpCode.LOG4]: log4,
+  [OpCode.RETURN]: return_,
+  [OpCode.REVERT]: revert,
 };
 
 function stop(evm: EVM): void {
@@ -940,4 +942,23 @@ function _log(evm: EVM, n: number): void {
   evm.logs.push({ address: evm.tx.to, data: data, topics: topics });
   evm.pc += 1;
   evm.decrementGas(375n + BigInt(cost));
+}
+
+function return_(evm: EVM): void {
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+  const [data, cost] = evm.memory.load(Number(offset), Number(size));
+  evm.returndata = data;
+  evm.pc += 1;
+  evm.decrementGas(BigInt(cost));
+}
+
+function revert(evm: EVM): void {
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+  const [data, cost] = evm.memory.load(Number(offset), Number(size));
+  evm.stopFlag = true;
+  evm.returndata = data;
+  evm.revertFlag = true;
+  evm.decrementGas(BigInt(cost));
 }

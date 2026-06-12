@@ -36,6 +36,7 @@ type TestCase = {
   expect: {
     success: boolean;
     stack: string[];
+    return?: string;
     logs?: {
       address: string;
       data: string;
@@ -89,8 +90,13 @@ function run() {
       assert.equal(success, t.expect.success);
       assertStackEqual(t, evm);
       assertLogsEqual(t, evm.logs);
+      assertReturnEqual(t, evm.returndata);
     });
   }
+}
+
+function assertReturnEqual(t: TestCase, returndata: Uint8Array) {
+  assert.deepEqual(hexToBytes(t.expect.return ?? ""), returndata);
 }
 
 function assertLogsEqual(t: TestCase, logs: Log[]) {
