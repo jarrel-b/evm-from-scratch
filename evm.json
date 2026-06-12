@@ -1054,7 +1054,7 @@
     }
   },
   {
-    "name": "JUMP (bad instruction boundry)",
+    "name": "JUMP (bad instruction boundary)",
     "hint": "See \"9.4.3. Jump Destination Validity\" of the Yellow Paper https://ethereum.github.io/yellowpaper/paper.pdf",
     "code": {
       "asm": "PUSH1 4\nJUMP\nPUSH1 0x5b\nPUSH1 0xff",

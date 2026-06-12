@@ -1,5 +1,6 @@
 import { toUint256 } from "./uint256.js";
 import { OpCode, handlers } from "./ops.js";
+import { UnimplementedOpcodeError } from "./errors.js";
 
 const MAXIMUM_STACK_SIZE = 1024;
 
@@ -167,12 +168,17 @@ export class State {
     return this.program[this.pc];
   }
 
-  run(): void {
+  run(maxSteps = 10_000): void {
+    let steps = 0;
     while (this.shouldExecute()) {
+      if (steps++ >= maxSteps) {
+        throw new Error(`execution step limit exceeded`)
+      }
+
       const op = this.program[this.pc] as OpCode;
       const handler = handlers[op];
       if (handler === undefined) {
-        throw new Error(`unimplemented opcode: 0x${op.toString(16)}`);
+        throw new UnimplementedOpcodeError(op);
       }
       handler(this);
     }

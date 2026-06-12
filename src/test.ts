@@ -2,6 +2,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
 import { State as EVM } from "./state.js";
+import { UnimplementedOpcodeError } from "./errors.js";
 
 type Case = {
   name: string;
@@ -25,21 +26,22 @@ function run() {
     test(t.name, () => {
       const prog = hexStringToUint8Array(t.code.bin);
       const evm = new EVM(testAddress, prog, gas, value);
+      let success = true;
 
-      evm.run();
+      try {
+        evm.run();
+        success = !evm.revertFlag;
+      } catch (e) {
+        if (e instanceof UnimplementedOpcodeError) {
+          throw (e)
+        } else {
+          success = false;
+        }
+      }
 
-      assertCompleted(t, evm);
+      assert.equal(success, t.expect.success);
       assertStackEqual(t, evm);
     });
-  }
-}
-
-function assertCompleted(t: Case, evm: EVM) {
-  try {
-    assert.equal(completed(evm), t.expect.success);
-  } catch (e) {
-    console.log(evm.pc, evm.program.length);
-    throw e;
   }
 }
 
@@ -56,10 +58,6 @@ function assertStackEqual(t: Case, evm: EVM) {
       `${e}\nHint: ${t.hint}\nASM: ${t.code.asm}\nExpected: ${expected}\nActual: ${actual}`,
     );
   }
-}
-
-function completed(evm: EVM): boolean {
-  return evm.stopFlag || evm.pc === evm.program.length;
 }
 
 function hexStringToUint8Array(hexString: string): Uint8Array {

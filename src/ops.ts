@@ -66,6 +66,7 @@ export enum OpCode {
   JUMP = 0x56,
   JUMPI = 0x57,
   PC = 0x58,
+  GAS = 0x5a,
   JUMPDEST = 0x5b,
   PUSH0 = 0x5f,
   PUSH1 = 0x60,
@@ -204,6 +205,12 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.SWAP3]: swap3,
   [OpCode.SWAP5]: swap5,
   [OpCode.SWAP7]: swap7,
+  [OpCode.INVALID]: invalid,
+  [OpCode.PC]: pc,
+  [OpCode.GAS]: gas,
+  [OpCode.JUMP]: jump,
+  [OpCode.JUMPDEST]: jumpdest,
+  [OpCode.JUMPI]: jumpi,
 };
 
 function stop(evm: EVM): void {
@@ -635,4 +642,78 @@ function _swap(evm: EVM, n: number): void {
   const b = evm.stack.items[idxB];
   evm.stack.items[idxA] = b;
   evm.stack.items[idxB] = a;
+}
+
+function invalid(evm: EVM): void {
+  evm.revertFlag = true;
+}
+
+function pc(evm: EVM): void {
+  const counter = evm.pc;
+  evm.stack.push(BigInt(counter));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function gas(evm: EVM): void {
+  // Return MAX_UINT256
+  evm.stack.push((1n << 256n) - 1n);
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function jump(evm: EVM): void {
+  const counter = Number(evm.stack.pop());
+
+  if (!_isValidJumpDest(evm.program, counter)) {
+    throw new Error(`invalid jump destination`);
+  }
+
+  evm.pc = counter;
+  evm.decrementGas(8n);
+}
+
+function jumpi(evm: EVM): void {
+  const counter = Number(evm.stack.pop());
+  const b = evm.stack.pop();
+
+  if (b === 0n) {
+    evm.pc += 1;
+    evm.decrementGas(10n);
+    return;
+  }
+
+  if (!_isValidJumpDest(evm.program, counter)) {
+    throw new Error(`invalid jump destination`);
+  }
+
+  evm.pc = Number(counter);;
+  evm.decrementGas(10n);
+}
+
+function _isValidJumpDest(program: Uint8Array, dest: number): boolean {
+  if (dest < 0 || dest >= program.length) {
+    return false
+  }
+
+  for (let pc = 0; pc < program.length; ) {
+    const op = program[pc];
+
+    if (pc === dest) {
+      return op === OpCode.JUMPDEST;
+    }
+
+    if (op >= OpCode.PUSH1 && op <= OpCode.PUSH32) {
+      pc += 1 + (op - OpCode.PUSH1 + 1);
+    } else {
+      pc += 1;
+    }
+  }
+
+  return false
+}
+
+function jumpdest(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(1n);
 }

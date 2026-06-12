@@ -11,7 +11,7 @@ async function main() {
   ]);
   const evm = new EVM(BigInt(0x1337), prog, 21_000n, 0n);
   evm.run();
-  console.log(evm.stack.items());
+  console.log(evm.stack.toArray());
 }
 
 main().catch(console.error);
