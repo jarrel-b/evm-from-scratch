@@ -118,7 +118,18 @@ export type Tx = {
   from: bigint;
   to: bigint;
   value: bigint;
+  gasprice: bigint;
   calldata?: Uint8Array;
+};
+
+export type Block = {
+  basefee: bigint;
+  coinbase: bigint;
+  timestamp: bigint;
+  number: bigint;
+  difficulty: bigint;
+  gaslimit: bigint;
+  chainid: bigint;
 };
 
 export class State {
@@ -129,6 +140,7 @@ export class State {
 
   #gas: bigint;
   tx: Tx;
+  block: Block;
   program: Readonly<Uint8Array>;
   calldata?: Readonly<Uint8Array>;
 
@@ -138,10 +150,11 @@ export class State {
   #returndata = [];
   #logs = [];
 
-  constructor(tx: Tx, program: Uint8Array, gas: bigint) {
+  constructor(tx: Tx, program: Uint8Array, gas: bigint, block: Block) {
     this.tx = tx;
     this.program = program;
     this.#gas = gas;
+    this.block = block;
   }
 
   decrementGas(amount: bigint): void {

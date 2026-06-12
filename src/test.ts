@@ -1,16 +1,26 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
-import { Tx, State as EVM } from "./state.js";
+import { Tx, Block, State as EVM } from "./state.js";
 import { UnimplementedOpcodeError } from "./errors.js";
 
 type TestCase = {
   name: string;
   hint: string;
+  block?: {
+    basefee: string;
+    coinbase: string;
+    timestamp: string;
+    number: string;
+    difficulty: string;
+    gaslimit: string;
+    chainid: string;
+  };
   tx?: {
     from: string;
     to: string;
     origin: string;
+    gasprice: string;
   };
   code: {
     asm: string;
@@ -29,8 +39,24 @@ function run() {
       const origin = BigInt(t.tx?.origin ?? 0);
       const from = BigInt(t.tx?.from ?? 0);
       const to = BigInt(t.tx?.to ?? 0);
-      const tx: Tx = { origin: origin, from: from, to: to, value: 0n };
-      const evm = new EVM(tx, prog, 21_000n);
+      const gasPrice = BigInt(t.tx?.gasprice ?? 0);
+      const tx: Tx = {
+        origin: origin,
+        from: from,
+        to: to,
+        value: 0n,
+        gasprice: gasPrice,
+      };
+      const block: Block = {
+        basefee: BigInt(t.block?.basefee ?? 0),
+        coinbase: BigInt(t.block?.coinbase ?? 0),
+        timestamp: BigInt(t.block?.timestamp ?? 0),
+        number: BigInt(t.block?.number ?? 0),
+        difficulty: BigInt(t.block?.difficulty ?? 0n),
+        gaslimit: BigInt(t.block?.gaslimit ?? 0),
+        chainid: BigInt(t.block?.chainid ?? 0),
+      };
+      const evm = new EVM(tx, prog, 21_000n, block);
       let success = true;
 
       try {

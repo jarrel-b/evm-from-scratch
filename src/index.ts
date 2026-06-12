@@ -1,4 +1,4 @@
-import { State as EVM } from "./state.js";
+import { State as EVM, type Block, type Tx } from "./state.js";
 import { OpCode } from "./ops.js";
 
 async function main() {
@@ -9,7 +9,23 @@ async function main() {
     0x02,
     OpCode.ADD,
   ]);
-  const evm = new EVM(BigInt(0x1337), prog, 21_000n, 0n);
+  const tx: Tx = {
+    origin: 0x1337n,
+    from: 0x1337n,
+    to: 0xaaan,
+    value: 0n,
+    gasprice: 0n,
+  };
+  const block: Block = {
+    basefee: 0n,
+    coinbase: 0n,
+    timestamp: 0n,
+    number: 0n,
+    difficulty: 0n,
+    gaslimit: 0n,
+    chainid: 0n,
+  };
+  const evm = new EVM(tx, prog, 21_000n, block);
   evm.run();
   console.log(evm.stack.toArray());
 }

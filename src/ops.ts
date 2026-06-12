@@ -214,6 +214,15 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.MSTORE]: mstore,
   [OpCode.MSTORE8]: mstore8,
   [OpCode.MSIZE]: msize,
+  [OpCode.GASPRICE]: gasprice,
+  [OpCode.BASEFEE]: basefee,
+  [OpCode.COINBASE]: coinbase,
+  [OpCode.TIMESTAMP]: timestamp,
+  [OpCode.NUMBER]: blocknumber,
+  [OpCode.PREVRANDAO]: prevrandao,
+  [OpCode.GASLIMIT]: gaslimit,
+  [OpCode.CHAINID]: chainid,
+  [OpCode.BLOCKHASH]: blockhash,
 };
 
 function stop(evm: EVM): void {
@@ -754,4 +763,59 @@ function msize(evm: EVM): void {
   evm.stack.push(BigInt(evm.memory.bytes.length));
   evm.pc += 1;
   evm.decrementGas(2n);
+}
+
+function gasprice(evm: EVM): void {
+  evm.stack.push(BigInt(evm.tx.gasprice));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function basefee(evm: EVM): void {
+  evm.stack.push(BigInt(evm.block.basefee));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function coinbase(evm: EVM): void {
+  evm.stack.push(BigInt(evm.block.coinbase));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function timestamp(evm: EVM): void {
+  evm.stack.push(BigInt(evm.block.timestamp));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function blocknumber(evm: EVM): void {
+  evm.stack.push(BigInt(evm.block.number));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function prevrandao(evm: EVM): void {
+  evm.stack.push(BigInt(evm.block.difficulty));
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function gaslimit(evm: EVM): void {
+  evm.stack.push(evm.block.gaslimit);
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function chainid(evm: EVM): void {
+  evm.stack.push(evm.block.chainid);
+  evm.pc += 1;
+  evm.decrementGas(2n);
+}
+
+function blockhash(evm: EVM): void {
+  evm.stack.pop();
+  evm.pc += 1;
+  evm.stack.push(0n);
+  evm.decrementGas(20n);
 }
