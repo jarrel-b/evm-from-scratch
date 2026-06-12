@@ -113,6 +113,13 @@ export class Storage {
   }
 }
 
+export type Tx = {
+  from: bigint;
+  to: bigint;
+  value: bigint;
+  calldata?: Uint8Array;
+};
+
 export class State {
   pc = 0;
   stack = new Stack();
@@ -120,10 +127,9 @@ export class State {
   storage = new Storage();
 
   #gas: bigint;
-  value: bigint;
+  tx: Tx;
   program: Readonly<Uint8Array>;
   calldata?: Readonly<Uint8Array>;
-  sender: bigint;
 
   stopFlag = false;
   revertFlag = false;
@@ -131,18 +137,10 @@ export class State {
   #returndata = [];
   #logs = [];
 
-  constructor(
-    sender: bigint,
-    program: Uint8Array,
-    gas: bigint,
-    value: bigint,
-    calldata?: Uint8Array,
-  ) {
-    this.sender = sender;
-    this.value = value;
+  constructor(tx: Tx, program: Uint8Array, gas: bigint) {
+    this.tx = tx;
     this.program = program;
     this.#gas = gas;
-    this.calldata = calldata;
   }
 
   decrementGas(amount: bigint): void {

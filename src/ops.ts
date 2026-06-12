@@ -422,7 +422,7 @@ function keccak256(evm: EVM): void {
 }
 
 function address(evm: EVM): void {
-  evm.stack.push(evm.sender);
+  evm.stack.push(evm.tx.to);
   evm.pc += 1;
   evm.decrementGas(2n);
 }
@@ -435,7 +435,7 @@ function balance(evm: EVM): void {
 }
 
 function origin(evm: EVM): void {
-  evm.stack.push(evm.sender);
+  evm.stack.push(evm.tx.from);
   evm.pc += 1;
   evm.decrementGas(2n);
 }
@@ -447,7 +447,7 @@ function caller(evm: EVM): void {
 }
 
 function callvalue(evm: EVM): void {
-  evm.stack.push(evm.value);
+  evm.stack.push(evm.tx.value);
   evm.pc += 1;
   evm.decrementGas(2n);
 }
@@ -752,6 +752,6 @@ function mstore8(evm: EVM): void {
 
 function msize(evm: EVM): void {
   evm.stack.push(BigInt(evm.memory.bytes.length));
-  evm.pc += 1
+  evm.pc += 1;
   evm.decrementGas(2n);
 }

@@ -1,12 +1,15 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
-import { State as EVM } from "./state.js";
+import { Tx, State as EVM } from "./state.js";
 import { UnimplementedOpcodeError } from "./errors.js";
 
-type Case = {
+type TestCase = {
   name: string;
   hint: string;
+  tx: {
+    to: string;
+  };
   code: {
     asm: string;
     bin: string;
@@ -18,14 +21,11 @@ type Case = {
 };
 
 function run() {
-  const testAddress = BigInt(0x1337);
-  const gas = 21_000n;
-  const value = 0n;
-
-  for (const t of tests as Case[]) {
+  for (const t of tests as TestCase[]) {
     test(t.name, () => {
       const prog = hexStringToUint8Array(t.code.bin);
-      const evm = new EVM(testAddress, prog, gas, value);
+      const tx: Tx = { from: 0n, to: BigInt(t.tx?.to ?? "0x0"), value: 0n };
+      const evm = new EVM(tx, prog, 21_000n);
       let success = true;
 
       try {
@@ -45,7 +45,7 @@ function run() {
   }
 }
 
-function assertStackEqual(t: Case, evm: EVM) {
+function assertStackEqual(t: TestCase, evm: EVM) {
   const expected = t.expect.stack;
   const actual = evm.stack
     .toArray()
