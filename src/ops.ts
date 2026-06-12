@@ -1,5 +1,6 @@
-import type { State as EVM } from "./state.js";
+import type { EVM } from "./evm.js";
 import * as uint256 from "./uint256.js";
+import { worldState } from "./state.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 
 export enum OpCode {
@@ -182,6 +183,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.CALLER]: caller,
   [OpCode.CALLVALUE]: callvalue,
   [OpCode.CALLDATALOAD]: calldataload,
+  [OpCode.CALLDATASIZE]: calldatasize,
   [OpCode.CODESIZE]: codesize,
   [OpCode.SLOAD]: sload,
   [OpCode.SSTORE]: sstore,
@@ -193,6 +195,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.PUSH6]: push6,
   [OpCode.PUSH10]: push10,
   [OpCode.PUSH11]: push11,
+  [OpCode.PUSH20]: push20,
   [OpCode.PUSH32]: push32,
   [OpCode.POP]: pop,
   [OpCode.SIGNEXTEND]: signextend,
@@ -436,13 +439,6 @@ function address(evm: EVM): void {
   evm.decrementGas(2n);
 }
 
-function balance(evm: EVM): void {
-  evm.stack.push(99999999999n);
-  evm.pc += 1;
-  // 100 if warm
-  evm.decrementGas(2600n);
-}
-
 function origin(evm: EVM): void {
   evm.stack.push(evm.tx.origin);
   evm.pc += 1;
@@ -465,12 +461,19 @@ function calldataload(evm: EVM): void {
   const i = Number(evm.stack.pop());
   let data = 0n;
   for (let offset = 0; offset < 32; offset++) {
-    const byte = evm.calldata?.[i + offset] ?? 0n;
+    const byte = evm.tx.calldata?.[i + offset] ?? 0n;
     data = (data << 8n) | BigInt(byte);
   }
   evm.stack.push(data);
   evm.pc += 1;
   evm.decrementGas(3n);
+}
+
+function calldatasize(evm: EVM): void {
+  const size = evm.tx.calldata?.length ?? 0;
+  evm.stack.push(BigInt(size));
+  evm.pc += 1;
+  evm.decrementGas(2n);
 }
 
 function codesize(evm: EVM): void {
@@ -541,6 +544,12 @@ function push11(evm: EVM): void {
   evm.pc += 1;
   evm.decrementGas(3n);
   _push(evm, 11);
+}
+
+function push20(evm: EVM): void {
+  evm.pc += 1;
+  evm.decrementGas(3n);
+  _push(evm, 20);
 }
 
 function push32(evm: EVM): void {
@@ -818,4 +827,12 @@ function blockhash(evm: EVM): void {
   evm.pc += 1;
   evm.stack.push(0n);
   evm.decrementGas(20n);
+}
+
+function balance(evm: EVM): void {
+  const address = evm.stack.pop() & ((1n << 160n) - 1n);
+  evm.stack.push(worldState.accounts.get(address)?.balance ?? 0n);
+  evm.pc += 1;
+  // TODO: Dynamic gas cost
+  evm.decrementGas(2600n);
 }

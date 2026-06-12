@@ -1,12 +1,14 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import tests from "../evm.json" with { type: "json" };
-import { Tx, Block, State as EVM } from "./state.js";
+import { Tx, Block, EVM } from "./evm.js";
+import { worldState } from "./state.js";
 import { UnimplementedOpcodeError } from "./errors.js";
 
 type TestCase = {
   name: string;
   hint: string;
+  state?: Record<string, { balance: string }>;
   block?: {
     basefee: string;
     coinbase: string;
@@ -21,6 +23,8 @@ type TestCase = {
     to: string;
     origin: string;
     gasprice: string;
+    value: string;
+    data: string;
   };
   code: {
     asm: string;
@@ -35,17 +39,14 @@ type TestCase = {
 function run() {
   for (const t of tests as TestCase[]) {
     test(t.name, () => {
-      const prog = hexStringToUint8Array(t.code.bin);
-      const origin = BigInt(t.tx?.origin ?? 0);
-      const from = BigInt(t.tx?.from ?? 0);
-      const to = BigInt(t.tx?.to ?? 0);
-      const gasPrice = BigInt(t.tx?.gasprice ?? 0);
+      const prog = hexToBytes(t.code.bin);
       const tx: Tx = {
-        origin: origin,
-        from: from,
-        to: to,
-        value: 0n,
-        gasprice: gasPrice,
+        origin: BigInt(t.tx?.origin ?? 0),
+        from: BigInt(t.tx?.from ?? 0),
+        to: BigInt(t.tx?.to ?? 0),
+        value: BigInt(t.tx?.value ?? 0),
+        gasprice: BigInt(t.tx?.gasprice ?? 0),
+        calldata: hexToBytes(t.tx?.data ?? ""),
       };
       const block: Block = {
         basefee: BigInt(t.block?.basefee ?? 0),
@@ -56,6 +57,12 @@ function run() {
         gaslimit: BigInt(t.block?.gaslimit ?? 0),
         chainid: BigInt(t.block?.chainid ?? 0),
       };
+      worldState.accounts.clear();
+      for (const [address, account] of Object.entries(t.state ?? {})) {
+        worldState.accounts.set(BigInt(address), {
+          balance: BigInt(account.balance),
+        });
+      }
       const evm = new EVM(tx, prog, 21_000n, block);
       let success = true;
 
@@ -91,7 +98,7 @@ function assertStackEqual(t: TestCase, evm: EVM) {
   }
 }
 
-function hexStringToUint8Array(hexString: string): Uint8Array {
+function hexToBytes(hexString: string): Uint8Array {
   const clean = hexString.startsWith("0x") ? hexString.slice(2) : hexString;
   if (clean.length % 2 !== 0) {
     throw new Error(`invalid hex string: ${hexString}`);

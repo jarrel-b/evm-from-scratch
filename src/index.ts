@@ -1,4 +1,4 @@
-import { State as EVM, type Block, type Tx } from "./state.js";
+import { EVM, type Block, type Tx } from "./evm.js";
 import { OpCode } from "./ops.js";
 
 async function main() {
