@@ -8,7 +8,10 @@ import { UnimplementedOpcodeError } from "./errors.js";
 type TestCase = {
   name: string;
   hint: string;
-  state?: Record<string, { balance: string }>;
+  state?: Record<
+    string,
+    { balance?: string; code?: { asm: string; bin: string } }
+  >;
   block?: {
     basefee: string;
     coinbase: string;
@@ -60,7 +63,8 @@ function run() {
       worldState.accounts.clear();
       for (const [address, account] of Object.entries(t.state ?? {})) {
         worldState.accounts.set(BigInt(address), {
-          balance: BigInt(account.balance),
+          balance: BigInt(account.balance ?? 0),
+          code: hexToBytes(account.code?.bin ?? ""),
         });
       }
       const evm = new EVM(tx, prog, 21_000n, block);

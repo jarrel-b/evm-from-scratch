@@ -226,6 +226,12 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.GASLIMIT]: gaslimit,
   [OpCode.CHAINID]: chainid,
   [OpCode.BLOCKHASH]: blockhash,
+  [OpCode.CALLDATACOPY]: calldatacopy,
+  [OpCode.CODECOPY]: codecopy,
+  [OpCode.EXTCODESIZE]: extcodesize,
+  [OpCode.EXTCODECOPY]: extcodecopy,
+  [OpCode.EXTCODEHASH]: extcodehash,
+  [OpCode.SELFBALANCE]: selfbalance,
 };
 
 function stop(evm: EVM): void {
@@ -428,7 +434,7 @@ function keccak256(evm: EVM): void {
   const offset = evm.stack.pop();
   const size = evm.stack.pop();
   const [data, expansionCost] = evm.memory.access(Number(offset), Number(size));
-  evm.stack.push(uint256.arrayToUint256(keccak_256(data)));
+  evm.stack.push(uint256.bytesToUint(keccak_256(data)));
   evm.pc += 1;
   evm.decrementGas(30n + BigInt(expansionCost));
 }
@@ -744,7 +750,7 @@ function jumpdest(evm: EVM): void {
 function mload(evm: EVM): void {
   const offset = evm.stack.pop();
   const [value, expansionCost] = evm.memory.load(Number(offset));
-  evm.stack.push(uint256.arrayToUint256(value));
+  evm.stack.push(uint256.bytesToUint(value));
   evm.pc += 1;
   evm.decrementGas(3n + BigInt(expansionCost));
 }
@@ -754,7 +760,7 @@ function mstore(evm: EVM): void {
   const value = evm.stack.pop();
   const expansionCost = evm.memory.store(
     Number(offset),
-    uint256.bigintToUint8Array(value),
+    uint256.bigintToBytes(value),
   );
   evm.pc += 1;
   evm.decrementGas(3n + BigInt(expansionCost));
@@ -830,9 +836,70 @@ function blockhash(evm: EVM): void {
 }
 
 function balance(evm: EVM): void {
-  const address = evm.stack.pop() & ((1n << 160n) - 1n);
+  const address = uint256.toAddress(evm.stack.pop());
   evm.stack.push(worldState.accounts.get(address)?.balance ?? 0n);
   evm.pc += 1;
   // TODO: Dynamic gas cost
   evm.decrementGas(2600n);
+}
+
+function calldatacopy(evm: EVM): void {
+  const destOffset = evm.stack.pop();
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+  const value =
+    evm.tx.calldata?.slice(Number(offset), Number(offset + size)) ??
+    new Uint8Array(Number(size));
+  const expansionCost = evm.memory.store(Number(destOffset), value);
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function codecopy(evm: EVM): void {
+  const destOffset = evm.stack.pop();
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+  const value =
+    evm.program?.slice(Number(offset), Number(offset + size)) ??
+    new Uint8Array(Number(size));
+  const expansionCost = evm.memory.store(Number(destOffset), value);
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function extcodesize(evm: EVM): void {
+  const address = uint256.toAddress(evm.stack.pop());
+  evm.stack.push(BigInt(worldState.accounts.get(address)?.code?.length ?? 0));
+  evm.pc += 1;
+  evm.decrementGas(100n);
+}
+
+function extcodecopy(evm: EVM): void {
+  const address = uint256.toAddress(evm.stack.pop());
+  const destOffset = evm.stack.pop();
+  const offset = Number(evm.stack.pop());
+  const size = Number(evm.stack.pop());
+  const value = worldState.accounts.get(address)?.code ?? new Uint8Array(size);
+  const expansionCost = evm.memory.store(
+    Number(destOffset),
+    value.slice(offset, offset + size),
+  );
+  evm.pc += 1;
+  evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function extcodehash(evm: EVM): void {
+  const address = uint256.toAddress(evm.stack.pop());
+  const code = worldState.accounts.get(address)?.code;
+  evm.stack.push(code ? uint256.bytesToUint(keccak_256(code)) : 0n);
+  evm.pc += 1;
+  // TODO: Dynamic gas cost
+  evm.decrementGas(2600n);
+}
+
+function selfbalance(evm: EVM): void {
+  const balance = worldState.accounts.get(evm.tx.to)?.balance ?? 0n;
+  evm.stack.push(balance);
+  evm.pc += 1;
+  evm.decrementGas(5n);
 }

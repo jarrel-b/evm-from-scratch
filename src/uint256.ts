@@ -16,13 +16,13 @@ export function byteSize(value: bigint): bigint {
   return value === 0n ? 0n : BigInt(Math.ceil(value.toString(16).length / 2));
 }
 
-export function arrayToUint256(bytes: Uint8Array): bigint {
+export function bytesToUint(bytes: Uint8Array): bigint {
   return bytes.reduce((acc, byte) => {
     return (acc << 8n) | BigInt(byte);
   }, 0n);
 }
 
-export function bigintToUint8Array(value: bigint): Uint8Array {
+export function bigintToBytes(value: bigint): Uint8Array {
   value &= UINT256_MASK;
   const bytes = new Uint8Array(32);
   for (let i = 31; i >= 0; i--) {
@@ -34,4 +34,8 @@ export function bigintToUint8Array(value: bigint): Uint8Array {
 
 export function toByte(value: bigint): Uint8Array {
   return new Uint8Array([Number(value & 0xffn)]);
+}
+
+export function toAddress(value: bigint): bigint {
+  return value & ((1n << 160n) - 1n);
 }
