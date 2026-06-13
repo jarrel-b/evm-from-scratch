@@ -15,9 +15,9 @@ npm run test
 ```
 
 TODO:
-[] Implement CALLCODE and CREATE2
-[] Add gas calculation
-[] Add tracing
+- [] Implement CALLCODE and CREATE2
+- [] Add gas calculation
+- [] Add tracing
 
 ## Resources
 
