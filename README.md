@@ -15,7 +15,7 @@ npm run test
 ```
 
 TODO:
-[x] Implement all OPs
+[] Implement CALLCODE and CREATE2
 [] Add gas calculation
 [] Add tracing
 

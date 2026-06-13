@@ -189,26 +189,72 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.SLOAD]: sload,
   [OpCode.SSTORE]: sstore,
   [OpCode.PUSH0]: push0,
-  [OpCode.PUSH1]: push1,
-  [OpCode.PUSH2]: push2,
-  [OpCode.PUSH3]: push3,
-  [OpCode.PUSH4]: push4,
-  [OpCode.PUSH6]: push6,
-  [OpCode.PUSH10]: push10,
-  [OpCode.PUSH11]: push11,
-  [OpCode.PUSH13]: push13,
-  [OpCode.PUSH20]: push20,
-  [OpCode.PUSH32]: push32,
+  [OpCode.PUSH1]: pushN(1),
+  [OpCode.PUSH2]: pushN(2),
+  [OpCode.PUSH3]: pushN(3),
+  [OpCode.PUSH4]: pushN(4),
+  [OpCode.PUSH5]: pushN(5),
+  [OpCode.PUSH6]: pushN(6),
+  [OpCode.PUSH7]: pushN(7),
+  [OpCode.PUSH8]: pushN(8),
+  [OpCode.PUSH9]: pushN(9),
+  [OpCode.PUSH10]: pushN(10),
+  [OpCode.PUSH11]: pushN(11),
+  [OpCode.PUSH12]: pushN(12),
+  [OpCode.PUSH13]: pushN(13),
+  [OpCode.PUSH14]: pushN(14),
+  [OpCode.PUSH15]: pushN(15),
+  [OpCode.PUSH16]: pushN(16),
+  [OpCode.PUSH17]: pushN(17),
+  [OpCode.PUSH18]: pushN(18),
+  [OpCode.PUSH19]: pushN(19),
+  [OpCode.PUSH20]: pushN(20),
+  [OpCode.PUSH21]: pushN(21),
+  [OpCode.PUSH22]: pushN(22),
+  [OpCode.PUSH23]: pushN(23),
+  [OpCode.PUSH24]: pushN(24),
+  [OpCode.PUSH25]: pushN(25),
+  [OpCode.PUSH26]: pushN(26),
+  [OpCode.PUSH27]: pushN(27),
+  [OpCode.PUSH28]: pushN(28),
+  [OpCode.PUSH29]: pushN(29),
+  [OpCode.PUSH30]: pushN(30),
+  [OpCode.PUSH31]: pushN(31),
+  [OpCode.PUSH32]: pushN(32),
   [OpCode.POP]: pop,
   [OpCode.SIGNEXTEND]: signextend,
-  [OpCode.DUP1]: dup1,
-  [OpCode.DUP3]: dup3,
-  [OpCode.DUP5]: dup5,
-  [OpCode.DUP8]: dup8,
-  [OpCode.SWAP1]: swap1,
-  [OpCode.SWAP3]: swap3,
-  [OpCode.SWAP5]: swap5,
-  [OpCode.SWAP7]: swap7,
+  [OpCode.DUP1]: dupN(1),
+  [OpCode.DUP2]: dupN(2),
+  [OpCode.DUP3]: dupN(3),
+  [OpCode.DUP4]: dupN(4),
+  [OpCode.DUP5]: dupN(5),
+  [OpCode.DUP6]: dupN(6),
+  [OpCode.DUP7]: dupN(7),
+  [OpCode.DUP8]: dupN(8),
+  [OpCode.DUP9]: dupN(9),
+  [OpCode.DUP10]: dupN(10),
+  [OpCode.DUP11]: dupN(11),
+  [OpCode.DUP12]: dupN(12),
+  [OpCode.DUP13]: dupN(13),
+  [OpCode.DUP14]: dupN(14),
+  [OpCode.DUP15]: dupN(15),
+  [OpCode.DUP16]: dupN(16),
+  [OpCode.SWAP1]: swapN(1),
+  [OpCode.SWAP2]: swapN(2),
+  [OpCode.SWAP3]: swapN(3),
+  [OpCode.SWAP4]: swapN(4),
+  [OpCode.SWAP5]: swapN(5),
+  [OpCode.SWAP6]: swapN(6),
+  [OpCode.SWAP7]: swapN(7),
+  [OpCode.SWAP8]: swapN(8),
+  [OpCode.SWAP9]: swapN(9),
+  [OpCode.SWAP10]: swapN(10),
+  [OpCode.SWAP11]: swapN(11),
+  [OpCode.SWAP12]: swapN(12),
+  [OpCode.SWAP13]: swapN(13),
+  [OpCode.SWAP14]: swapN(14),
+  [OpCode.SWAP15]: swapN(15),
+  [OpCode.SWAP16]: swapN(16),
   [OpCode.INVALID]: invalid,
   [OpCode.PC]: pc,
   [OpCode.GAS]: gas,
@@ -528,64 +574,12 @@ function push0(evm: EVM): void {
   evm.decrementGas(2n);
 }
 
-function push1(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 1);
-  evm.decrementGas(3n);
-}
-
-function push2(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 2);
-  evm.decrementGas(3n);
-}
-
-function push3(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 3);
-  evm.decrementGas(3n);
-}
-
-function push4(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 4);
-  evm.decrementGas(3n);
-}
-
-function push6(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 6);
-  evm.decrementGas(3n);
-}
-
-function push10(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 10);
-  evm.decrementGas(3n);
-}
-
-function push11(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 11);
-  evm.decrementGas(3n);
-}
-
-function push13(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 13);
-  evm.decrementGas(3n);
-}
-
-function push20(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 20);
-  evm.decrementGas(3n);
-}
-
-function push32(evm: EVM): void {
-  evm.pc += 1;
-  _push(evm, 32);
-  evm.decrementGas(3n);
+function pushN(n: number): (evm: EVM) => void {
+  return (evm: EVM): void => {
+    evm.pc += 1;
+    _push(evm, n);
+    evm.decrementGas(3n);
+  };
 }
 
 function _push(evm: EVM, n: number): void {
@@ -624,28 +618,12 @@ function signextend(evm: EVM): void {
   evm.decrementGas(5n);
 }
 
-function dup1(evm: EVM): void {
-  _dup(evm, 0);
-  evm.pc += 1;
-  evm.decrementGas(3n);
-}
-
-function dup3(evm: EVM): void {
-  _dup(evm, 2);
-  evm.pc += 1;
-  evm.decrementGas(3n);
-}
-
-function dup5(evm: EVM): void {
-  _dup(evm, 4);
-  evm.pc += 1;
-  evm.decrementGas(3n);
-}
-
-function dup8(evm: EVM): void {
-  _dup(evm, 7);
-  evm.pc += 1;
-  evm.decrementGas(3n);
+function dupN(n: number): (evm: EVM) => void {
+  return (evm: EVM): void => {
+    _dup(evm, n - 1);
+    evm.pc += 1;
+    evm.decrementGas(3n);
+  };
 }
 
 function _dup(evm: EVM, n: number): void {
@@ -656,28 +634,12 @@ function _dup(evm: EVM, n: number): void {
   evm.stack.push(evm.stack.items[idx]);
 }
 
-function swap1(evm: EVM): void {
-  _swap(evm, 1);
-  evm.pc += 1;
-  evm.decrementGas(3n);
-}
-
-function swap3(evm: EVM): void {
-  _swap(evm, 3);
-  evm.pc += 1;
-  evm.decrementGas(3n);
-}
-
-function swap5(evm: EVM): void {
-  _swap(evm, 5);
-  evm.pc += 1;
-  evm.decrementGas(3n);
-}
-
-function swap7(evm: EVM): void {
-  _swap(evm, 7);
-  evm.pc += 1;
-  evm.decrementGas(3n);
+function swapN(n: number): (evm: EVM) => void {
+  return (evm: EVM): void => {
+    _swap(evm, n);
+    evm.pc += 1;
+    evm.decrementGas(3n);
+  };
 }
 
 function _swap(evm: EVM, n: number): void {
