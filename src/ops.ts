@@ -196,6 +196,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.PUSH6]: push6,
   [OpCode.PUSH10]: push10,
   [OpCode.PUSH11]: push11,
+  [OpCode.PUSH13]: push13,
   [OpCode.PUSH20]: push20,
   [OpCode.PUSH32]: push32,
   [OpCode.POP]: pop,
@@ -245,6 +246,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.RETURNDATACOPY]: returndatacopy,
   [OpCode.DELEGATECALL]: delegatecall,
   [OpCode.STATICCALL]: staticcall,
+  [OpCode.CREATE]: create,
 };
 
 function stop(evm: EVM): void {
@@ -521,62 +523,68 @@ function sstore(evm: EVM): void {
 
 function push0(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(2n);
   evm.stack.push(0n);
+  evm.decrementGas(2n);
 }
 
 function push1(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 1);
+  evm.decrementGas(3n);
 }
 
 function push2(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 2);
+  evm.decrementGas(3n);
 }
 
 function push3(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 3);
+  evm.decrementGas(3n);
 }
 
 function push4(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 4);
+  evm.decrementGas(3n);
 }
 
 function push6(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 6);
+  evm.decrementGas(3n);
 }
 
 function push10(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 10);
+  evm.decrementGas(3n);
 }
 
 function push11(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 11);
+  evm.decrementGas(3n);
+}
+
+function push13(evm: EVM): void {
+  evm.pc += 1;
+  _push(evm, 13);
+  evm.decrementGas(3n);
 }
 
 function push20(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 20);
+  evm.decrementGas(3n);
 }
 
 function push32(evm: EVM): void {
   evm.pc += 1;
-  evm.decrementGas(3n);
   _push(evm, 32);
+  evm.decrementGas(3n);
 }
 
 function _push(evm: EVM, n: number): void {
@@ -894,11 +902,13 @@ function extcodecopy(evm: EVM): void {
   const destOffset = evm.stack.pop();
   const offset = Number(evm.stack.pop());
   const size = Number(evm.stack.pop());
-  const value = worldState.accounts.get(address)?.code ?? new Uint8Array(size);
-  const expansionCost = evm.memory.store(
-    Number(destOffset),
-    value.slice(offset, offset + size),
-  );
+
+  const code = worldState.accounts.get(address)?.code ?? new Uint8Array(size);
+  const bytes = new Uint8Array(size);
+
+  bytes.set(code.slice(offset, offset + size));
+
+  const expansionCost = evm.memory.store(Number(destOffset), bytes);
   evm.pc += 1;
   evm.decrementGas(3n + BigInt(expansionCost));
 }
@@ -1006,7 +1016,6 @@ function staticcall(evm: EVM): void {
   ctx.storage = evm.storage;
 
   let success = true;
-
   try {
     ctx.run();
   } catch (e) {
@@ -1051,7 +1060,6 @@ function delegatecall(evm: EVM): void {
   ctx.writable = evm.writable;
 
   let success = true;
-
   try {
     ctx.run();
   } catch (e) {
@@ -1097,8 +1105,8 @@ function call(evm: EVM): void {
   };
 
   const ctx = new EVM(tx, code, gas, evm.block);
-  let success = true;
 
+  let success = true;
   try {
     ctx.run();
   } catch (e) {
@@ -1130,4 +1138,54 @@ function returndatacopy(evm: EVM): void {
   );
   evm.pc += 1;
   evm.decrementGas(3n + BigInt(expansionCost));
+}
+
+function create(evm: EVM): void {
+  const value = evm.stack.pop();
+  const offset = evm.stack.pop();
+  const size = evm.stack.pop();
+
+  if (evm.tx.value < value) {
+    throw new Error("insufficient funds");
+  }
+
+  // TODO: Compute address from sender
+  const newAddress = 1337n;
+
+  if (worldState.accounts.get(newAddress)) {
+    throw new Error(`${address} exists`);
+  }
+
+  const [constructor, _] = evm.memory.load(Number(offset), Number(size));
+
+  const tx: Tx = {
+    origin: evm.tx.origin,
+    from: evm.tx.to,
+    to: newAddress,
+    value: value,
+    gasprice: value,
+  };
+
+  const ctx = new EVM(tx, constructor, evm.gas, evm.block);
+  ctx.writable = true;
+
+  let success = true;
+  try {
+    ctx.run();
+  } catch (e) {
+    success = false;
+  }
+
+  const deployedCode = success ? ctx.returndata : new Uint8Array();
+
+  if (success && !ctx.revertFlag) {
+    worldState.accounts.set(newAddress, { balance: value, code: deployedCode });
+    evm.stack.push(newAddress);
+  } else {
+    evm.stack.push(0n);
+  }
+
+  evm.pc += 1;
+  // TODO: Gas calc
+  evm.decrementGas(32000n);
 }

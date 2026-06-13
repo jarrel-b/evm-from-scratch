@@ -120,6 +120,7 @@ export type Tx = {
   value: bigint;
   gasprice: bigint;
   calldata?: Uint8Array;
+  nonce?: bigint;
 };
 
 export type Block = {
@@ -144,7 +145,7 @@ export class EVM {
   memory = new Memory();
   storage = new Storage();
 
-  #gas: bigint;
+  gas: bigint;
   tx: Tx;
   block: Block;
   program: Readonly<Uint8Array>;
@@ -161,12 +162,12 @@ export class EVM {
   constructor(tx: Tx, program: Uint8Array, gas: bigint, block: Block) {
     this.tx = tx;
     this.program = program;
-    this.#gas = gas;
+    this.gas = gas;
     this.block = block;
   }
 
   decrementGas(amount: bigint): void {
-    if (this.#gas - amount < 0) {
+    if (this.gas - amount < 0) {
       throw new Error("out of gas");
     }
   }

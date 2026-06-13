@@ -2045,7 +2045,8 @@
     "name": "CREATE (empty)",
     "hint": "Read \"Creating new contracts\" section of the course learning materials. This code creates a new empty account with balance 9",
     "tx": {
-      "to": "0x9bbfed6889322e016e0a02ee459d306fc19545d8"
+      "to": "0x9bbfed6889322e016e0a02ee459d306fc19545d8",
+      "value": "0x10"
     },
     "code": {
       "asm": "PUSH1 0\nPUSH1 0\nPUSH1 9\nCREATE\nBALANCE",

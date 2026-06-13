@@ -56,6 +56,7 @@ function run() {
         value: BigInt(t.tx?.value ?? 0),
         gasprice: BigInt(t.tx?.gasprice ?? 0),
         calldata: hexToBytes(t.tx?.data ?? ""),
+        nonce: 0n,
       };
       const block: Block = {
         basefee: BigInt(t.block?.basefee ?? 0),
@@ -73,7 +74,7 @@ function run() {
           code: hexToBytes(account.code?.bin ?? ""),
         });
       }
-      const evm = new EVM(tx, prog, 21_000n, block);
+      const evm = new EVM(tx, prog, 32_000n, block);
       evm.writable = true;
 
       let success = true;
