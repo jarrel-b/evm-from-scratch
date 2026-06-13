@@ -247,6 +247,7 @@ export const handlers: Partial<Record<OpCode, (evm: EVM) => void>> = {
   [OpCode.DELEGATECALL]: delegatecall,
   [OpCode.STATICCALL]: staticcall,
   [OpCode.CREATE]: create,
+  [OpCode.SELFDESTRUCT]: selfdestruct,
 };
 
 function stop(evm: EVM): void {
@@ -1188,4 +1189,14 @@ function create(evm: EVM): void {
   evm.pc += 1;
   // TODO: Gas calc
   evm.decrementGas(32000n);
+}
+
+function selfdestruct(evm: EVM): void {
+  const address = uint256.toAddress(evm.stack.pop());
+  let account = worldState.accounts.get(address) ?? { balance: 0n };
+  account.balance += worldState.accounts.get(evm.tx.to)?.balance ?? 0n;
+  worldState.accounts.set(address, account);
+  worldState.accounts.delete(evm.tx.to);
+  // TODO: Gas calc
+  evm.decrementGas(5000n);
 }
